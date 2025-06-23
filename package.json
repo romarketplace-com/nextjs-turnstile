@@ -1,19 +1,32 @@
 {
   "name": "nextjs-turnstile",
-  "version": "0.0.6",
+  "version": "0.1.0",
   "description": "Integrate Cloudflare Turnstile CAPTCHA in Next.js applications",
-  "main": "dist/index.js",
-  "scripts": {
-    "build": "babel src --out-dir dist",
-    "test": "jest"
+  "main": "dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./verify": "./dist/server/verifyTurnstile.js"
   },
-  "dependencies": {
-    "node-fetch": "^3.3.2"
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs --dts --clean",
+    "test": "jest",
+    "prepublishOnly": "npm run build && npm run test"
   },
   "peerDependencies": {
-    "react": ">=16"
+    "next": ">=12.0.0",
+    "react": ">=16.0.0",
+    "react-dom": ">=16.0.0"
   },
   "optionalPeerDependencies": {
+    "react-dom": ">=16",
     "react": ">=16",
     "next": ">=11"
   },
@@ -34,9 +47,17 @@
     "captcha"
   ],
   "devDependencies": {
-    "@babel/cli": "^7.25.6",
-    "@babel/core": "^7.25.2",
-    "@babel/preset-env": "^7.25.4",
-    "@babel/preset-react": "^7.24.7"
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.3",
+    "@types/react": "^19.1.8",
+    "jest-environment-jsdom": "^30.0.0",
+    "jest-fetch-mock": "^3.0.3",
+    "jsdom": "^26.1.0",
+    "ts-jest": "^29.4.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3"
   }
 }
