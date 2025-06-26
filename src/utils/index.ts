@@ -3,6 +3,9 @@
 // Safe to import from Node contexts (SSR) – every function no‑ops if
 // `window` or `turnstile` are unavailable.
 
+// Shared registries for preventing duplicate IDs across all Turnstile components
+export const usedContainerIds = new Set<string>();
+export const usedResponseFieldNames = new Set<string>();
 
 // ──────────────────────────────────────────────────────────────────────────
 // Types & ambient declaration

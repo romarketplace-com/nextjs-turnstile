@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 import Script from "next/script";
-import { loadTurnstileScript } from "../utils";
+import { loadTurnstileScript, usedContainerIds, usedResponseFieldNames } from "../utils";
 
 /**
  * Public props for {@link TurnstileImplicit}.
@@ -11,7 +11,7 @@ export interface TurnstileImplicitProps {
   /** Your Cloudflare *site‑key*. If omitted we fall back to
    * `process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY`. */
   siteKey?: string;
-  /** Widget theme. `'auto'` follows the user’s colour‑scheme. */
+  /** Widget theme. `'auto'` follows the user's colour‑scheme. */
   theme?: "auto" | "light" | "dark";
   /** Widget size. */
   size?: "normal" | "compact";
@@ -21,39 +21,44 @@ export interface TurnstileImplicitProps {
    * duplication would clash – we throw if this happens.
    */
   responseFieldName?: string;
-  /** How Turnstile behaves when a token expires.  We default to `'manual'`
-   * to prevent Cloudflare from reloading the top‑window in an SPA. */
+  /** How Turnstile behaves when a token expires.  We default to 'auto' as cloudflare recommends. */
   refreshExpired?: "auto" | "manual" | "never";
+  /** How Turnstile behaves when a widget times out.  We default to 'auto' as cloudflare recommends. */
+  refreshTimeout?: "auto" | "manual" | "never";
   /** Extra class to apply to the host `<div>` element. */
   className?: string;
   /** Fires when the widget returns a *valid* token. */
   onSuccess?(token: string): void;
-  /** Fires when the token *expires* (~2 min). */
+  /** Fires when the token *expires* (~2 min). */
   onExpire?(): void;
+  /** Fires when the interactive challenge times out. */
+  onTimeout?(): void;
   /** Fires on unrecoverable error. */
   onError?(): void;
 }
-
-// Registry guarding against duplicate `responseFieldName`s.
-const usedNames = new Set<string>();
 
 export default function TurnstileImplicit({
   siteKey,
   theme = "auto",
   size = "normal",
   responseFieldName = "cf-turnstile-response",
-  refreshExpired = "manual",
+  refreshExpired = "auto",
+  refreshTimeout = "auto",
   className,
   onSuccess,
   onExpire,
+  onTimeout,
   onError,
 }: TurnstileImplicitProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | number | null>(null);
 
-  // Resolve site‑key lazily so it isn’t baked into the bundle signature.
+  // Resolve site‑key lazily so it isn't baked into the bundle signature.
   const resolvedKey =
     siteKey ?? process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
+
+  // Generate unique container ID
+  const containerId = `cft-${responseFieldName}`;
 
   /**
    * Callback prefix ensures every widget registers *unique* global function
@@ -71,18 +76,27 @@ export default function TurnstileImplicit({
   // ---------------------------------------------------------------------------
   useEffect(() => {
     // Prevent duplicate widgets binding the same hidden‑input name.
-    if (usedNames.has(responseFieldName)) {
+    if (usedResponseFieldNames.has(responseFieldName)) {
       throw new Error(
-        `Duplicate responseFieldName \"${responseFieldName}\" detected. ` +
+        `Duplicate responseFieldName "${responseFieldName}" detected. ` +
           "Each <TurnstileImplicit> on the page must use a unique name."
       );
     }
-    usedNames.add(responseFieldName);
+    usedResponseFieldNames.add(responseFieldName);
+
+    // Prevent duplicate container IDs
+    if (usedContainerIds.has(containerId)) {
+      throw new Error(
+        `Duplicate containerId "${containerId}" detected. ` +
+          "Each <TurnstileImplicit> on the page must use a unique responseFieldName."
+      );
+    }
+    usedContainerIds.add(containerId);
 
     // Ensure a host element exists before we load the script.
     if (!hostRef.current) return;
 
-    // Load Turnstile’s script in *implicit* mode (idempotent).
+    // Load Turnstile's script in *implicit* mode (idempotent).
     loadTurnstileScript("implicit")
       .then(() => {
         // clean host div if CF left hidden inputs from a previous scan
@@ -92,12 +106,9 @@ export default function TurnstileImplicit({
         (window as any)[cbNames.error] = () => onError?.();
         (window as any)[cbNames.expire] = () => {
           onExpire?.();
-          if (widgetId.current != null)
-            window.turnstile?.reset(widgetId.current);
         };
         (window as any)[cbNames.timeout] = () => {
-          if (widgetId.current != null)
-            window.turnstile?.reset(widgetId.current);
+          onTimeout?.();
         };
 
         // Render the widget into the host div.
@@ -108,6 +119,7 @@ export default function TurnstileImplicit({
             size,
             "response-field-name": responseFieldName,
             "refresh-expired": refreshExpired,
+            "refresh-timeout": refreshTimeout,
             callback: cbNames.verify,
             "expired-callback": cbNames.expire,
             "error-callback": cbNames.error,
@@ -119,7 +131,8 @@ export default function TurnstileImplicit({
 
     // Cleanup on unmount / HMR.
     return () => {
-      usedNames.delete(responseFieldName);
+      usedResponseFieldNames.delete(responseFieldName);
+      usedContainerIds.delete(containerId);
       if (widgetId.current) {
         window.turnstile!.remove(widgetId.current);
         widgetId.current = null;
@@ -135,7 +148,8 @@ export default function TurnstileImplicit({
     theme,
     size,
     responseFieldName,
-    refreshExpired
+    refreshExpired,
+    refreshTimeout
   ]);
 
   // ---------------------------------------------------------------------------
@@ -154,7 +168,7 @@ export default function TurnstileImplicit({
 
       {/* Host div Turnstile will replace with an iframe. */}
       <div
-        id={`cft-${responseFieldName}`}
+        id={containerId}
         ref={hostRef}
         className={`cf-turnstile ${className ?? ""}`}
         data-sitekey={resolvedKey}
