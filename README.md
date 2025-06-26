@@ -154,7 +154,7 @@ export default function MyForm() {
 
 ### Verification Utility
 In your API routes:
-ß
+
 ```javascript
 import { verifyTurnstile } from 'nextjs-turnstile';
 
@@ -173,13 +173,50 @@ export default async function handler(req, res) {
 }
 ```
 
-### Other Utilities
-**Reset CAPTCHA:** You can reset the CAPTCHA by calling the `resetTurnstile(widgetId)` function.
-`widgetId` is the query selector of the CAPTCHA widget e.g. `#cf-turnstile-response-1`.
+### Function API
 
-**Check and Render CAPTCHA:** You can check if the CAPTCHA is required and render it by calling the `checkTurnstile(widgetId)` function.
-`widgetId` is the query selector of the CAPTCHA widget e.g. `#cf-turnstile-response-1`.
+Here's a breakdown of the functions available in `nextjs-turnstile`.
 
+#### Server-side
+
+##### `verifyTurnstile(token, options?)`
+
+Verifies a Cloudflare Turnstile token from your server-side code (e.g., API routes, Server Actions).
+
+-   `token` (string, required): The `cf-turnstile-response` value from the form.
+-   `options` (object, optional):
+    -   `secretKey` (string): Your Turnstile secret key. Defaults to the `TURNSTILE_SECRET_KEY` environment variable.
+    -   `ip` (string): The user's IP address. The function attempts to automatically determine this from request headers, but you can provide it manually.
+    -   `headers` (Headers | object): When calling from a context without access to `next/headers` (like Pages Router API routes), you can pass the request headers to help with IP address detection.
+
+**Returns:** A `Promise<boolean>` that resolves to `true` if the token is valid, and `false` otherwise.
+
+**Example:**
+
+```javascript
+import { verifyTurnstile } from 'nextjs-turnstile';
+
+export async function POST(request: Request) {
+  const { token } = await request.json();
+  const success = await verifyTurnstile(token);
+
+  if (success) {
+    return new Response('Success!', { status: 200 });
+  }
+  return new Response('Captcha failed', { status: 400 });
+}
+```
+
+#### Client-side
+
+These utility functions can be used in your React components to interact with the Turnstile widget. They can be safely imported in any environment and will not cause issues during server-side rendering.
+
+-   `loadTurnstileScript(mode?)`: Dynamically loads the Turnstile script. `mode` can be `'implicit'` (default) or `'explicit'`. Returns a promise that resolves when the script is loaded.
+-   `isTurnstileLoaded()`: Returns `true` if the Turnstile script has been loaded and the `window.turnstile` object is available.
+-   `resetTurnstile(widget?)`: Resets a Turnstile widget, allowing the user to solve it again. The `widget` parameter can be the widget's ID, or you can leave it empty to reset all widgets on the page.
+-   `executeTurnstile(widget)`: Programmatically runs the challenge for a given widget.
+-   `getTurnstileResponse(widget)`: Retrieves the current response token for a specific widget.
+-   `removeTurnstile(widget)`: Removes a widget and its associated elements from the DOM.
 
 ## Environment Variables
 You need to add the following environment variables to your .env.local file:
@@ -189,8 +226,22 @@ NEXT_PUBLIC_TURNSTILE_SITE_KEY=your_site_key_here
 TURNSTILE_SECRET_KEY=your_secret_key_here
 ```
 
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for release history and notable changes.
+
+## Contributing
+
+Contributions, issues, and feature requests are welcome! Please open an issue or pull request on [GitHub](https://github.com/davodm/nextjs-turnstile).
+
+### Development
+- Clone the repo and run `npm install`.
+- Run `npm test` to execute tests.
+- Run `npm run build` to build the package.
+- Lint with `npm run lint` (if ESLint config is present).
+
 ## License
-This project is licensed under the MIT License - see the [License](./License) file for details.
+This project is licensed under the MIT License - see the [License](./LICENSE) file for details.
 
 
 ## Author
