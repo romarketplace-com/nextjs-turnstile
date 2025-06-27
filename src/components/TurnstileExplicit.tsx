@@ -121,13 +121,9 @@ export default function TurnstileExplicit({
           "refresh-expired": refreshExpired,
           "refresh-timeout": refreshTimeout,
           callback: (token: string) => onSuccess?.(token),
-          "error-callback": () => onError?.(),
-          "expired-callback": () => {
-            onExpire?.();
-          },
-          "timeout-callback": () => {
-            onTimeout?.();
-          },
+          "error-callback": (error?: any) => onError?.(),
+          "expired-callback": () => onExpire?.(),
+          "timeout-callback": () => onTimeout?.(),
         });
         
         if (renderedWidgetId) {

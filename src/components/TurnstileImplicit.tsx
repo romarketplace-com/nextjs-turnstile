@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef } from "react";
-import Script from "next/script";
 import { loadTurnstileScript, usedContainerIds, usedResponseFieldNames } from "../utils";
 
 /**
@@ -93,39 +92,25 @@ export default function TurnstileImplicit({
     }
     usedContainerIds.add(containerId);
 
+    // Register global callbacks BEFORE the script loads
+    // Cloudflare's implicit mode scans the DOM immediately when the script loads
+    (window as any)[cbNames.verify] = (token: string) => onSuccess?.(token);
+    (window as any)[cbNames.error] = () => onError?.();
+    (window as any)[cbNames.expire] = () => {
+      onExpire?.();
+    };
+    (window as any)[cbNames.timeout] = () => {
+      onTimeout?.();
+    };
+
     // Ensure a host element exists before we load the script.
     if (!hostRef.current) return;
 
     // Load Turnstile's script in *implicit* mode (idempotent).
     loadTurnstileScript("implicit")
       .then(() => {
-        // clean host div if CF left hidden inputs from a previous scan
-        if (hostRef.current) hostRef.current.innerHTML = "";
-        // Register global callbacks so CF can reach React land.
-        (window as any)[cbNames.verify] = (token: string) => onSuccess?.(token);
-        (window as any)[cbNames.error] = () => onError?.();
-        (window as any)[cbNames.expire] = () => {
-          onExpire?.();
-        };
-        (window as any)[cbNames.timeout] = () => {
-          onTimeout?.();
-        };
-
-        // Render the widget into the host div.
-        if (!widgetId.current) {
-          widgetId.current = window.turnstile!.render(hostRef.current!, {
-            sitekey: resolvedKey,
-            theme,
-            size,
-            "response-field-name": responseFieldName,
-            "refresh-expired": refreshExpired,
-            "refresh-timeout": refreshTimeout,
-            callback: cbNames.verify,
-            "expired-callback": cbNames.expire,
-            "error-callback": cbNames.error,
-            "timeout-callback": cbNames.timeout,
-          });
-        }
+        // The widget should render automatically in implicit mode
+        // since we have the data attributes set on the div
       })
       .catch((err) => onError?.());
 
@@ -149,7 +134,15 @@ export default function TurnstileImplicit({
     size,
     responseFieldName,
     refreshExpired,
-    refreshTimeout
+    refreshTimeout,
+    onSuccess,
+    onError,
+    onExpire,
+    onTimeout,
+    cbNames.verify,
+    cbNames.error,
+    cbNames.expire,
+    cbNames.timeout
   ]);
 
   // ---------------------------------------------------------------------------
@@ -158,14 +151,6 @@ export default function TurnstileImplicit({
    */
   return (
     <>
-      {/* Script tag duplicated safely across multiple widgets. */}
-      <Script
-        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-        async
-        defer
-        strategy="afterInteractive"
-      />
-
       {/* Host div Turnstile will replace with an iframe. */}
       <div
         id={containerId}
