@@ -27,9 +27,9 @@ export async function verifyTurnstile(
   const secret = options.secretKey ?? process.env.TURNSTILE_SECRET_KEY;
   if (!secret) throw new Error("Turnstile Secret key not provided");
 
-  const ip = options.ip ?? getClientIp(options?.headers);
+  const ip = options.ip ?? await getClientIp(options?.headers);
 
-  // Cloudflare’s API accepts JSON (cf. docs 2024‑12‑01)
+  // Cloudflare's API accepts JSON (cf. docs 2024‑12‑01)
   const body: Record<string, string> = { secret, response: token };
   if (ip) body["remoteip"] = ip;
 
@@ -52,16 +52,26 @@ export async function verifyTurnstile(
   return Boolean(json.success);
 }
 
-export function getClientIp(
+export async function getClientIp(
   initHeaders?: Record<string, string | string[] | undefined> | Headers
-): string | undefined {
-  // 1. Try next/headers (App Router & Server Actions)
+): Promise<string | undefined> {
+  // 1. Try next/headers (App Router & Server Actions)
   try {
-    // Lazy require so code still compiles in Next 12 environments
-    // where `next/headers` doesn’t exist.
+    // Lazy require so code still compiles in Next 12 environments
+    // where `next/headers` doesn't exist.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { headers } = require("next/headers");
-    const h: Headers = headers();
+    
+    // Handle both sync (Next.js 12) and async (Next.js 13+) headers()
+    let h: Headers;
+    try {
+      // Try calling headers() as async first (Next.js 13+)
+      h = await headers();
+    } catch {
+      // Fallback to sync call (Next.js 12)
+      h = headers();
+    }
+    
     const ip =
       h.get("x-forwarded-for")?.split(",")[0]?.trim() ||
       h.get("cf-connecting-ip") ||

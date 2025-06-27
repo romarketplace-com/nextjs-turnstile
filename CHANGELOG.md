@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] - 2025-01-27
+- **Fix**: Resolve compatibility issue with Next.js 13+ async `headers()` function
+- **Improvement**: `getClientIp()` now handles both sync (Next.js 12) and async (Next.js 13+) `headers()` calls
+- **Breaking**: `getClientIp()` is now async and returns `Promise<string | undefined>`
+
 ## [0.1.1] - 2025-06-27
 - Fix issue with callback invocation in implicit mode
 - Fix issue with duplicate script tag in implicit mode
