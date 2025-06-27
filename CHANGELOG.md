@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2025-06-27
+- Fix issue with callback invocation in implicit mode
+- Fix issue with duplicate script tag in implicit mode
+
 ## [0.1.0] - 2025-06-26
 - **TypeScript rewrite**: Complete migration of the codebase to TypeScript for improved type safety and maintainability
 - Added comprehensive server-side tests with Jest
