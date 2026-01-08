@@ -14,6 +14,8 @@ export interface TurnstileImplicitProps {
   theme?: "auto" | "light" | "dark";
   /** Widget size. */
   size?: "normal" | "compact";
+  /** Controls when the challenge UI is shown. */
+  appearance?: "always" | "execute" | "interaction-only";
   /**
    * Name of the hidden input that will receive the token.  Must be **unique**
    * per page.  The same name is also used to build callback identifiers, so
@@ -40,6 +42,7 @@ export default function TurnstileImplicit({
   siteKey,
   theme = "auto",
   size = "normal",
+  appearance,
   responseFieldName = "cf-turnstile-response",
   refreshExpired = "auto",
   refreshTimeout = "auto",
@@ -159,6 +162,7 @@ export default function TurnstileImplicit({
         data-sitekey={resolvedKey}
         data-theme={theme}
         data-size={size}
+        data-appearance={appearance}
         data-response-field-name={responseFieldName}
         data-callback={cbNames.verify}
         data-error-callback={cbNames.error}

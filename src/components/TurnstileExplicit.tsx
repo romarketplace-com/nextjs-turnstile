@@ -13,6 +13,8 @@ export interface TurnstileExplicitProps {
   theme?: "auto" | "light" | "dark";
   /** 'normal' ≈ 300×65, 'compact' ≈ 130×65. */
   size?: "normal" | "compact";
+  /** Controls when the challenge UI is shown. */
+  appearance?: "always" | "execute" | "interaction-only";
   /**
    * Name of the hidden input that will receive the token.  Must be **unique**
    * per page.  The same name is also used to build callback identifiers, so
@@ -47,6 +49,7 @@ export default function TurnstileExplicit({
   siteKey: customSiteKey,
   theme = "auto",
   size = "normal",
+  appearance,
   onSuccess,
   onError,
   onExpire,
@@ -117,6 +120,7 @@ export default function TurnstileExplicit({
           sitekey: siteKey,
           theme,
           size,
+          ...(appearance && { appearance }),
           ...(responseFieldName && { "response-field-name": responseFieldName }),
           "refresh-expired": refreshExpired,
           "refresh-timeout": refreshTimeout,
@@ -149,7 +153,7 @@ export default function TurnstileExplicit({
         removeTurnstile(localWidgetId);
       }
     };
-  }, [id, siteKey, theme, size, onSuccess, onError, onExpire, onTimeout, refreshExpired, refreshTimeout, responseFieldName]);
+  }, [id, siteKey, theme, size, appearance, onSuccess, onError, onExpire, onTimeout, refreshExpired, refreshTimeout, responseFieldName]);
 
   return <div ref={containerRef} id={id} className="cf-turnstile" />;
 }

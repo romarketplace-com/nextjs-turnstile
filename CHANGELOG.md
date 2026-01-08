@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.3] - 2026-01-08
+- Add `appearance` support for implicit and explicit widgets
+- Update README examples to document appearance modes
+
 ## [0.1.2] - 2025-01-27
 - **Fix**: Resolve compatibility issue with Next.js 13+ async `headers()` function
 - **Improvement**: `getClientIp()` now handles both sync (Next.js 12) and async (Next.js 13+) `headers()` calls

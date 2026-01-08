@@ -18,6 +18,7 @@ npm install nextjs-turnstile
 ### Components
 **TurnstileImplicit:**
 - Note: The `onSuccess`, `onError`, and `onExpire` props are optional.
+- Note: `appearance` controls when the challenge UI shows (`"always"`, `"execute"`, `"interaction-only"`).
 
 ```javascript
 import React from 'react';
@@ -73,6 +74,7 @@ export default function MyForm() {
       <TurnstileImplicit
         theme="dark"
         size="normal"
+        appearance="execute"
         responseFieldName="cf-turnstile-response-1"
         onSuccess={handleSuccess}
         onError={handleError}
@@ -96,6 +98,7 @@ export default function MyForm() {
 **TurnstileExplicit:**
 - Note: Developers must place the divs in their HTML and pass the id of the div to the `responseFieldName` prop.
 - Note: The `onSuccess`, `onError`, and `onExpire` props are optional.
+- Note: `appearance` controls when the challenge UI shows (`"always"`, `"execute"`, `"interaction-only"`).
 ```javascript
 import React from 'react';
 import { TurnstileExplicit, verifyTurnstile } from 'nextjs-turnstile';
@@ -132,6 +135,7 @@ export default function MyForm() {
       <TurnstileExplicit
         theme="dark"
         size="normal"
+        appearance="interaction-only"
         responseFieldName="cf-turnstile-response-3"
         onSuccess={(token) => console.log(token)}
         onError={(error) => console.error(error)}
