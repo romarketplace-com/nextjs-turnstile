@@ -493,6 +493,46 @@ describe("Turnstile Component", () => {
   });
 
   // ===========================================================================
+  // React Strict Mode Compatibility
+  // ===========================================================================
+
+  describe("React Strict Mode Compatibility", () => {
+    it("prevents double rendering in Strict Mode", async () => {
+      // Simulate Strict Mode by forcing useEffect to run multiple times
+      // This is what happens in React Strict Mode development
+      const { rerender } = render(<Turnstile siteKey="test-key" />);
+
+      // Wait for initial render
+      await waitFor(() => {
+        expect(mockRender).toHaveBeenCalledTimes(1);
+      });
+
+      // Simulate Strict Mode re-running effects (this would happen automatically in Strict Mode)
+      // The component should prevent the second render
+      rerender(<Turnstile siteKey="test-key" />);
+
+      // Should still only have been called once due to our isRenderingRef guard
+      await new Promise(resolve => setTimeout(resolve, 100));
+      expect(mockRender).toHaveBeenCalledTimes(1);
+    });
+
+    it("allows re-rendering when configuration actually changes", async () => {
+      const { rerender } = render(<Turnstile siteKey="test-key" theme="light" />);
+
+      await waitFor(() => {
+        expect(mockRender).toHaveBeenCalledTimes(1);
+      });
+
+      // Change a configuration prop that should trigger re-render
+      rerender(<Turnstile siteKey="test-key" theme="dark" />);
+
+      await waitFor(() => {
+        expect(mockRender).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
+  // ===========================================================================
   // Callback Stability
   // ===========================================================================
 

@@ -334,6 +334,9 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
   // Track if component is mounted (for async safety)
   const isMountedRef = useRef(true);
 
+  // Track if widget is currently being rendered (prevents double rendering in Strict Mode)
+  const isRenderingRef = useRef(false);
+
   // ===========================================================================
   // Callback refs - prevents effect re-runs when callbacks change
   // ===========================================================================
@@ -443,6 +446,12 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
       return;
     }
 
+    // Prevent double rendering in React Strict Mode
+    if (isRenderingRef.current) {
+      return;
+    }
+
+    isRenderingRef.current = true;
     let localWidgetId: string | undefined;
 
     // Load the Turnstile script and render the widget
@@ -450,6 +459,7 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
       .then(() => {
         // Safety check: component might have unmounted during script load
         if (!isMountedRef.current || !containerRef.current) {
+          isRenderingRef.current = false;
           return;
         }
 
@@ -458,6 +468,7 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
         if (!turnstile) {
           console.error("[Turnstile] Script loaded but turnstile object not found.");
           onErrorRef.current?.("script_load_failed");
+          isRenderingRef.current = false;
           return;
         }
 
@@ -533,10 +544,12 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
           } else {
             console.error("[Turnstile] Render returned invalid widget ID.");
             onErrorRef.current?.("render_failed");
+            isRenderingRef.current = false;
           }
         } catch (e) {
           console.error("[Turnstile] Render failed:", e);
           onErrorRef.current?.("render_exception");
+          isRenderingRef.current = false;
         }
       })
       .catch((error) => {
@@ -544,11 +557,13 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
         if (isMountedRef.current) {
           onErrorRef.current?.("script_load_failed");
         }
+        isRenderingRef.current = false;
       });
 
     // Cleanup on unmount or when dependencies change
     return () => {
       isMountedRef.current = false;
+      isRenderingRef.current = false;
 
       // Remove the widget if it was rendered
       if (localWidgetId) {
