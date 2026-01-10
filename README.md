@@ -1,6 +1,6 @@
 # Next.js Turnstile
 
-[![npm version](https://img.shields.io/npm/v/nextjs-turnstile)](https://www.npmjs.com/package/nextjs-turnstile)
+[![npm version](https://img.shields.io/npm/v/nextjs-turnstile/v/1.0.0)](https://www.npmjs.com/package/nextjs-turnstile)
 [![License](https://img.shields.io/npm/l/nextjs-turnstile)](./LICENSE)
 [![npm downloads](https://img.shields.io/npm/dw/nextjs-turnstile)](https://www.npmjs.com/package/nextjs-turnstile)
 
@@ -235,12 +235,17 @@ These client-side utilities are SSR-safe and can be imported anywhere:
 
 ```ts
 import {
+  // Script loading
   loadTurnstileScript,
   isTurnstileLoaded,
+
+  // Widget control
   resetTurnstile,
+  removeTurnstile,
   getTurnstileResponse,
   executeTurnstile,
   isTokenExpired,
+  renderTurnstile,
 } from "nextjs-turnstile";
 ```
 
@@ -249,9 +254,11 @@ import {
 | `loadTurnstileScript()` | Load the Turnstile script (returns Promise) |
 | `isTurnstileLoaded()` | Check if script is loaded |
 | `resetTurnstile(widgetRef?)` | Reset a widget |
+| `removeTurnstile(widgetRef)` | Remove a widget from the page |
 | `getTurnstileResponse(widgetRef)` | Get token from a widget |
 | `executeTurnstile(widgetRef)` | Execute challenge on a widget |
 | `isTokenExpired(widgetRef)` | Check if token is expired |
+| `renderTurnstile(container, options)` | Render a widget (low-level API) |
 
 ## Size Options
 

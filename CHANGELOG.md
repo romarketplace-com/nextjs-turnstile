@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [1.0.1] - 2026-01-10
+
+### Fixed
+
+- **React Strict Mode**: Fixed "Turnstile has already been rendered in this container" error in React Strict Mode by preventing double widget rendering
+
 ## [1.0.0] - 2026-01-10
 
 ### ⚠️ Breaking Changes
@@ -66,6 +73,7 @@ import { Turnstile } from "nextjs-turnstile";
 ```
 
 ---
+
 
 ## [0.1.3] - 2026-01-08
 - Add `appearance` support for implicit and explicit widgets
