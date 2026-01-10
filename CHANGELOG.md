@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 
 
+## [1.0.2] - 2026-01-10
+
+### Fixed
+
+- **React Strict Mode**: Enhanced React 18+ Strict Mode compatibility with multiple guards against double widget rendering
+- **Widget Persistence**: Improved cleanup logic to distinguish between Strict Mode effect re-runs and real component unmounts
+- **Race Condition Protection**: Added DOM-level iframe checks to prevent rendering when widgets already exist
+
+### Tests
+
+- **Strict Mode Testing**: Added comprehensive test coverage for React 18+ Strict Mode double-invocation scenarios
+
 ## [1.0.1] - 2026-01-10
 
 ### Fixed

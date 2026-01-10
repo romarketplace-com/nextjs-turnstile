@@ -8,7 +8,13 @@ import { Turnstile, TurnstileRef } from "../src";
 // Mock the utils module
 jest.mock("../src/utils", () => ({
   loadTurnstileScript: jest.fn(() => Promise.resolve()),
-  removeTurnstile: jest.fn(),
+  // Make removeTurnstile actually clear the widget iframe from container
+  // This simulates what the real implementation does via turnstile.remove()
+  removeTurnstile: jest.fn((widgetId: string) => {
+    // In JSDOM, find and remove any turnstile iframes
+    const iframes = document.querySelectorAll('iframe[data-turnstile]');
+    iframes.forEach(iframe => iframe.remove());
+  }),
   isTurnstileLoaded: jest.fn(() => true),
 }));
 
@@ -18,14 +24,27 @@ jest.spyOn(console, "warn").mockImplementation(() => {});
 
 describe("Turnstile Component", () => {
   // Mock Turnstile API
-  const mockRender = jest.fn(() => "test-widget-id");
+  // Simulate actual Cloudflare behavior: render() adds an iframe to the container
+  const mockRender = jest.fn((container: HTMLElement) => {
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('data-turnstile', 'true');
+    container.appendChild(iframe);
+    return "test-widget-id";
+  });
   const mockReset = jest.fn();
-  const mockRemove = jest.fn();
+  const mockRemove = jest.fn((widgetId?: string) => {
+    // Simulate Cloudflare's remove behavior: clear the iframes
+    const iframes = document.querySelectorAll('iframe[data-turnstile]');
+    iframes.forEach(iframe => iframe.remove());
+  });
   const mockGetResponse = jest.fn(() => "test-token");
   const mockExecute = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Clear any lingering iframes from previous tests
+    document.querySelectorAll('iframe[data-turnstile]').forEach(el => el.remove());
 
     // Set up mock Turnstile on window
     (window as any).turnstile = {
@@ -514,6 +533,49 @@ describe("Turnstile Component", () => {
       // Should still only have been called once due to our isRenderingRef guard
       await new Promise(resolve => setTimeout(resolve, 100));
       expect(mockRender).toHaveBeenCalledTimes(1);
+    });
+
+    it("prevents double rendering when iframe already exists in container (React 18+ Strict Mode)", async () => {
+      // In React 18+ Strict Mode, effects are double-invoked via reconnectPassiveEffects.
+      // The cleanup runs between invocations, but the DOM container persists.
+      // This test simulates that scenario by delaying script load resolution
+      // and adding an iframe to the container before it resolves.
+      
+      const { loadTurnstileScript } = require("../src/utils");
+      
+      // Create a controlled promise for script loading
+      let resolveScriptLoad: () => void;
+      const scriptLoadPromise = new Promise<void>(resolve => {
+        resolveScriptLoad = resolve;
+      });
+      
+      // Override loadTurnstileScript to use our controlled promise
+      (loadTurnstileScript as jest.Mock).mockReturnValue(scriptLoadPromise);
+
+      const { container } = render(<Turnstile siteKey="test-key" />);
+
+      // Find the container div that containerRef points to
+      const turnstileContainer = container.querySelector('[aria-label="Cloudflare Turnstile challenge"]');
+      expect(turnstileContainer).not.toBeNull();
+
+      // Simulate React 18+ Strict Mode scenario:
+      // Add an iframe to the container BEFORE the script load resolves
+      // (as if a previous effect run already rendered the widget)
+      const existingIframe = document.createElement('iframe');
+      turnstileContainer!.appendChild(existingIframe);
+
+      // Now resolve the script load
+      resolveScriptLoad!();
+      
+      // Wait for the async code to execute
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // The component should have detected the existing iframe and NOT called render
+      // (this prevents the "Turnstile has already been rendered" error)
+      expect(mockRender).not.toHaveBeenCalled();
+
+      // The iframe should still be there
+      expect(turnstileContainer!.querySelector('iframe')).not.toBeNull();
     });
 
     it("allows re-rendering when configuration actually changes", async () => {

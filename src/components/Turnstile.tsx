@@ -326,6 +326,7 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Widget ID assigned by Cloudflare (stored as ref to avoid re-renders)
+  // This ref PERSISTS across Strict Mode effect re-runs
   const widgetIdRef = useRef<string | undefined>(undefined);
 
   // Track if widget is ready
@@ -334,8 +335,9 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
   // Track if component is mounted (for async safety)
   const isMountedRef = useRef(true);
 
-  // Track if widget is currently being rendered (prevents double rendering in Strict Mode)
-  const isRenderingRef = useRef(false);
+  // Track if we have successfully rendered a widget in this component instance
+  // This persists across Strict Mode effect re-runs and prevents double rendering
+  const hasRenderedRef = useRef(false);
 
   // ===========================================================================
   // Callback refs - prevents effect re-runs when callbacks change
@@ -397,6 +399,7 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
           try {
             turnstile.remove(widgetIdRef.current);
             widgetIdRef.current = undefined;
+            hasRenderedRef.current = false;
             setIsReady(false);
           } catch (e) {
             console.error("[Turnstile] Remove failed:", e);
@@ -446,20 +449,45 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
       return;
     }
 
-    // Prevent double rendering in React Strict Mode
-    if (isRenderingRef.current) {
+    // ==========================================================================
+    // React 18+ Strict Mode Guard
+    // ==========================================================================
+    // In Strict Mode, effects are double-invoked:
+    // 1. Effect runs → cleanup runs → effect runs again
+    // 2. Additionally, React calls `reconnectPassiveEffects` which re-runs
+    //    effects WITHOUT unmounting the component
+    //
+    // We use multiple checks to prevent double widget creation:
+    // 1. hasRenderedRef - tracks if we've already rendered successfully
+    // 2. widgetIdRef - tracks the current widget ID
+    // 3. iframe check - DOM-level verification
+    // ==========================================================================
+
+    // Check 1: If we already have a widget ID, don't render again
+    if (widgetIdRef.current) {
       return;
     }
 
-    isRenderingRef.current = true;
-    let localWidgetId: string | undefined;
+    // Check 2: If we've already successfully rendered, don't render again
+    if (hasRenderedRef.current) {
+      return;
+    }
+
+    // Check 3: If container already has an iframe (widget), don't render again
+    // This catches cases where the widget exists but our refs were reset
+    if (container.querySelector('iframe[src*="turnstile"], iframe[allow*="cross-origin"]')) {
+      return;
+    }
+
+    // Mark that we're attempting to render
+    hasRenderedRef.current = true;
 
     // Load the Turnstile script and render the widget
     loadTurnstileScript()
       .then(() => {
         // Safety check: component might have unmounted during script load
         if (!isMountedRef.current || !containerRef.current) {
-          isRenderingRef.current = false;
+          hasRenderedRef.current = false;
           return;
         }
 
@@ -468,7 +496,22 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
         if (!turnstile) {
           console.error("[Turnstile] Script loaded but turnstile object not found.");
           onErrorRef.current?.("script_load_failed");
-          isRenderingRef.current = false;
+          hasRenderedRef.current = false;
+          return;
+        }
+
+        // Final iframe check before rendering (in case of race conditions)
+        if (containerRef.current.querySelector('iframe')) {
+          // Widget already exists, just mark as ready
+          setIsReady(true);
+          onLoadRef.current?.();
+          return;
+        }
+
+        // If we already have a widget ID (set by a previous render), don't render again
+        if (widgetIdRef.current) {
+          setIsReady(true);
+          onLoadRef.current?.();
           return;
         }
 
@@ -534,8 +577,7 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
           const renderedId = turnstile.render(containerRef.current, options);
 
           if (renderedId !== undefined && renderedId !== null) {
-            localWidgetId = String(renderedId);
-            widgetIdRef.current = localWidgetId;
+            widgetIdRef.current = String(renderedId);
 
             if (isMountedRef.current) {
               setIsReady(true);
@@ -544,12 +586,12 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
           } else {
             console.error("[Turnstile] Render returned invalid widget ID.");
             onErrorRef.current?.("render_failed");
-            isRenderingRef.current = false;
+            hasRenderedRef.current = false;
           }
         } catch (e) {
           console.error("[Turnstile] Render failed:", e);
           onErrorRef.current?.("render_exception");
-          isRenderingRef.current = false;
+          hasRenderedRef.current = false;
         }
       })
       .catch((error) => {
@@ -557,21 +599,38 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
         if (isMountedRef.current) {
           onErrorRef.current?.("script_load_failed");
         }
-        isRenderingRef.current = false;
+        hasRenderedRef.current = false;
       });
 
     // Cleanup on unmount or when dependencies change
     return () => {
       isMountedRef.current = false;
-      isRenderingRef.current = false;
 
-      // Remove the widget if it was rendered
-      if (localWidgetId) {
-        removeTurnstile(localWidgetId);
+      // ==========================================================================
+      // Strict Mode Cleanup Strategy
+      // ==========================================================================
+      // In Strict Mode, this cleanup runs but the component isn't actually
+      // unmounting - effects will be re-run immediately after.
+      //
+      // We check if the container is still in the DOM:
+      // - If container is in DOM → Strict Mode cleanup, DON'T remove widget
+      // - If container is NOT in DOM → Real unmount, remove widget
+      //
+      // This prevents the "already rendered" error while still cleaning up
+      // properly on real unmounts.
+      // ==========================================================================
+
+      const isRealUnmount = !containerRef.current || !document.body.contains(containerRef.current);
+
+      if (isRealUnmount && widgetIdRef.current) {
+        // Real unmount - clean up the widget
+        removeTurnstile(widgetIdRef.current);
+        widgetIdRef.current = undefined;
+        hasRenderedRef.current = false;
+        setIsReady(false);
       }
-
-      widgetIdRef.current = undefined;
-      setIsReady(false);
+      // If not a real unmount (Strict Mode), we keep the widget and refs intact
+      // The next effect run will see hasRenderedRef/widgetIdRef and skip rendering
     };
   }, [
     // Only include props that should cause a full re-render of the widget
@@ -624,4 +683,3 @@ interface TurnstileAPI {
 }
 
 export default Turnstile;
-
