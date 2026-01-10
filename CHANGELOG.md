@@ -2,6 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2026-01-10
+
+### ⚠️ Breaking Changes
+
+This is a major version bump with breaking changes to improve stability and simplify the API.
+
+- **Single Component**: Replaced `TurnstileImplicit` and `TurnstileExplicit` with a unified `Turnstile` component
+- **Explicit Mode Only**: The component now uses explicit rendering internally for reliable React lifecycle management
+- **React 18+**: Minimum React version is now 18.0.0
+- **Next.js 13+**: Minimum Next.js version is now 13.0.0
+- **Node 18+**: Minimum Node.js version is now 18.0.0
+
+### Added
+
+- **Imperative API**: New ref-based API with `reset()`, `remove()`, `getResponse()`, `execute()`, `isReady()`, and `getWidgetId()` methods
+- **`flexible` size**: Added support for the `flexible` size option (100% width, min 300px)
+- **`execution` prop**: Control when the challenge runs (`"render"` or `"execute"`)
+- **`retry` prop**: Control retry behavior (`"auto"` or `"never"`)
+- **`retryInterval` prop**: Customize retry interval in milliseconds
+- **`action` prop**: Custom action identifier for analytics
+- **`cData` prop**: Custom data payload returned during validation
+- **`language` prop**: Control widget language
+- **`onLoad` callback**: Called when widget is ready
+- **`onBeforeInteractive` callback**: Called before interactive challenge
+- **`onAfterInteractive` callback**: Called after interactive challenge
+- **`onUnsupported` callback**: Called when browser is not supported
+- **`isTokenExpired()` utility**: Check if a widget's token has expired
+- **`renderTurnstile()` utility**: Low-level function for advanced use cases
+
+### Fixed
+
+- **Callback Stability**: Callbacks no longer cause widget re-renders (stored in refs)
+- **Script Loading**: Added timeout and proper error handling for script loading
+- **Error Handling**: Error callback now returns `true` as per Cloudflare docs
+- **Cleanup**: Proper widget cleanup on unmount and re-render
+- **React Strict Mode**: Better handling of React 18's Strict Mode double-mount
+
+### Changed
+
+- **Simplified Exports**: Cleaner export structure with better TypeScript types
+- **Improved Docs**: Comprehensive JSDoc comments on all public APIs
+- **Better Logging**: Development-only warnings for common issues
+
+### Migration Guide
+
+```tsx
+// Before (v0.x)
+import { TurnstileImplicit, TurnstileExplicit } from "nextjs-turnstile";
+
+<TurnstileImplicit
+  responseFieldName="my-token"
+  onSuccess={handleSuccess}
+/>
+
+// After (v1.0.0)
+import { Turnstile } from "nextjs-turnstile";
+
+<Turnstile
+  responseFieldName="my-token"
+  onSuccess={handleSuccess}
+/>
+```
+
+---
+
 ## [0.1.3] - 2026-01-08
 - Add `appearance` support for implicit and explicit widgets
 - Update README examples to document appearance modes

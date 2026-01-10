@@ -1,9 +1,91 @@
-export { default as TurnstileImplicit } from "./components/TurnstileImplicit";
-export { default as TurnstileExplicit } from "./components/TurnstileExplicit";
-export { verifyTurnstile } from "./utils/verifyTurnstile";
+/**
+ * Next.js Turnstile - Cloudflare Turnstile CAPTCHA integration for Next.js
+ *
+ * @packageDocumentation
+ * @module nextjs-turnstile
+ *
+ * @example
+ * ```tsx
+ * // Client-side: Render the CAPTCHA widget
+ * import { Turnstile, TurnstileRef } from 'nextjs-turnstile';
+ *
+ * function MyForm() {
+ *   const turnstileRef = useRef<TurnstileRef>(null);
+ *
+ *   return (
+ *     <form onSubmit={handleSubmit}>
+ *       <Turnstile
+ *         ref={turnstileRef}
+ *         onSuccess={(token) => setToken(token)}
+ *       />
+ *       <button type="submit">Submit</button>
+ *     </form>
+ *   );
+ * }
+ * ```
+ *
+ * @example
+ * ```ts
+ * // Server-side: Verify the token
+ * import { verifyTurnstile } from 'nextjs-turnstile';
+ *
+ * export async function POST(request: Request) {
+ *   const { token } = await request.json();
+ *   const isValid = await verifyTurnstile(token);
+ *
+ *   if (!isValid) {
+ *     return Response.json({ error: 'CAPTCHA failed' }, { status: 400 });
+ *   }
+ *
+ *   // Continue with your logic...
+ * }
+ * ```
+ */
+
+// =============================================================================
+// Component
+// =============================================================================
+
+export { default as Turnstile } from "./components/Turnstile";
+
+// =============================================================================
+// Component Types
+// =============================================================================
+
+export type {
+  TurnstileProps,
+  TurnstileRef,
+  TurnstileSize,
+  TurnstileTheme,
+  TurnstileAppearance,
+  TurnstileExecution,
+  TurnstileRefreshBehavior,
+  TurnstileRetry,
+} from "./components/Turnstile";
+
+// =============================================================================
+// Server-side Verification
+// =============================================================================
+
+export { verifyTurnstile, getClientIp } from "./utils/verifyTurnstile";
+export type { VerifyOptions } from "./utils/verifyTurnstile";
+
+// =============================================================================
+// Client-side Utilities
+// =============================================================================
+
 export {
-  resetTurnstile,
-  executeTurnstile,
-  getTurnstileResponse,
+  // Script loading
+  loadTurnstileScript,
   isTurnstileLoaded,
+
+  // Widget control
+  resetTurnstile,
+  removeTurnstile,
+  getTurnstileResponse,
+  executeTurnstile,
+  isTokenExpired,
+  renderTurnstile,
 } from "./utils";
+
+export type { WidgetRef } from "./utils";
