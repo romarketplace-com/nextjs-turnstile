@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 
 
+## [1.0.3] - 2026-01-10
+
+### Fixed
+
+- **Widget Re-rendering**: Fixed component re-rendering when configuration props change (theme, size, etc.)
+- **Configuration Changes**: Properly remove and recreate widgets when props like theme or size are updated
+- **Test Configuration**: Added explicit testSequencer configuration to resolve Jest setup issues
+
+### Changed
+
+- **Rendering Guards**: Reordered effect guards to prioritize hasRenderedRef checks and enable proper re-rendering flow
+
 ## [1.0.2] - 2026-01-10
 
 ### Fixed

@@ -463,14 +463,27 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
     // 3. iframe check - DOM-level verification
     // ==========================================================================
 
-    // Check 1: If we already have a widget ID, don't render again
-    if (widgetIdRef.current) {
+    // Check 1: If we've already successfully rendered in this effect run, don't render again
+    // This prevents double rendering within the same effect execution
+    if (hasRenderedRef.current) {
       return;
     }
 
-    // Check 2: If we've already successfully rendered, don't render again
-    if (hasRenderedRef.current) {
-      return;
+    // Check 2: If we have a widget ID but hasRenderedRef is false, it means this is a
+    // re-render due to configuration changes - we need to remove the old widget first
+    if (widgetIdRef.current) {
+      console.log("[Turnstile] Configuration changed, re-rendering widget");
+      // Check if turnstile is already available (script already loaded)
+      const turnstile = (window as any).turnstile as TurnstileAPI | undefined;
+      if (turnstile) {
+        try {
+          turnstile.remove(widgetIdRef.current);
+        } catch (e) {
+          console.warn("[Turnstile] Failed to remove previous widget:", e);
+        }
+      }
+      widgetIdRef.current = undefined;
+      setIsReady(false);
     }
 
     // Check 3: If container already has an iframe (widget), don't render again
@@ -607,30 +620,28 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
       isMountedRef.current = false;
 
       // ==========================================================================
-      // Strict Mode Cleanup Strategy
+      // Enhanced Cleanup Strategy for Strict Mode + Re-rendering
       // ==========================================================================
-      // In Strict Mode, this cleanup runs but the component isn't actually
-      // unmounting - effects will be re-run immediately after.
-      //
-      // We check if the container is still in the DOM:
-      // - If container is in DOM → Strict Mode cleanup, DON'T remove widget
-      // - If container is NOT in DOM → Real unmount, remove widget
-      //
-      // This prevents the "already rendered" error while still cleaning up
-      // properly on real unmounts.
+      // We need to handle three scenarios:
+      // 1. Real unmount: Remove widget completely
+      // 2. Strict Mode cleanup: Keep widget but allow re-run
+      // 3. Dependency change: Reset refs to allow re-rendering with new config
       // ==========================================================================
 
       const isRealUnmount = !containerRef.current || !document.body.contains(containerRef.current);
 
       if (isRealUnmount && widgetIdRef.current) {
-        // Real unmount - clean up the widget
+        // Real unmount - clean up the widget completely
         removeTurnstile(widgetIdRef.current);
         widgetIdRef.current = undefined;
         hasRenderedRef.current = false;
         setIsReady(false);
+      } else {
+        // Either Strict Mode cleanup OR dependency change
+        // We need to reset hasRenderedRef to allow the next effect run to proceed
+        // This enables re-rendering when configuration changes
+        hasRenderedRef.current = false;
       }
-      // If not a real unmount (Strict Mode), we keep the widget and refs intact
-      // The next effect run will see hasRenderedRef/widgetIdRef and skip rendering
     };
   }, [
     // Only include props that should cause a full re-render of the widget
