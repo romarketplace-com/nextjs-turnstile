@@ -67,8 +67,21 @@ export type {
 // Server-side Verification
 // =============================================================================
 
-export { verifyTurnstile, getClientIp } from "./utils/verifyTurnstile";
-export type { VerifyOptions } from "./utils/verifyTurnstile";
+export {
+  verifyTurnstile,
+  getClientIp,
+  getTurnstileErrorDescription,
+  isSuccessfulVerifyResponse,
+} from "./utils/verifyTurnstile";
+
+export type {
+  // Verification response types
+  SuccessfulVerifyResponse,
+  FailedVerifyResponse,
+  // Verification options and error codes
+  VerifyOptions,
+  TurnstileErrorCode,
+} from "./utils/verifyTurnstile";
 
 // =============================================================================
 // Client-side Utilities
@@ -88,4 +101,4 @@ export {
   renderTurnstile,
 } from "./utils";
 
-export type { WidgetRef } from "./utils";
+export type { WidgetRef } from "./types";

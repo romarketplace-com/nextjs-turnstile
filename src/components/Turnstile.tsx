@@ -4,12 +4,14 @@ import {
   useEffect,
   useRef,
   useState,
-  useLayoutEffect,
   useCallback,
   forwardRef,
   useImperativeHandle,
 } from "react";
 import { loadTurnstileScript, removeTurnstile } from "../utils";
+import type { TurnstileAPI } from "../types";
+import { debugLog } from "../utils/debug";
+import { useCallbackRefs } from "./hooks/useCallbackRefs";
 
 // =============================================================================
 // Types
@@ -190,6 +192,10 @@ export interface TurnstileProps {
 
   /**
    * Called when an error occurs (e.g., network error, challenge failed).
+   *
+   * This callback is always treated as "handled" by the widget, which prevents
+   * Cloudflare from logging duplicate errors to its backend service.
+   *
    * @param errorCode - Optional error code from Cloudflare.
    * @see https://developers.cloudflare.com/turnstile/troubleshooting/client-side-errors/error-codes/
    */
@@ -342,29 +348,17 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
   // ===========================================================================
   // Callback refs - prevents effect re-runs when callbacks change
   // ===========================================================================
-  // NOTE: We store callbacks in refs and update them synchronously.
-  // This allows parent components to pass inline arrow functions without
-  // causing the widget to be destroyed and recreated on every render.
-
-  const onSuccessRef = useRef(onSuccess);
-  const onErrorRef = useRef(onError);
-  const onExpireRef = useRef(onExpire);
-  const onTimeoutRef = useRef(onTimeout);
-  const onBeforeInteractiveRef = useRef(onBeforeInteractive);
-  const onAfterInteractiveRef = useRef(onAfterInteractive);
-  const onUnsupportedRef = useRef(onUnsupported);
-  const onLoadRef = useRef(onLoad);
-
-  // Update refs when callbacks change (useLayoutEffect for synchronous update)
-  useLayoutEffect(() => {
-    onSuccessRef.current = onSuccess;
-    onErrorRef.current = onError;
-    onExpireRef.current = onExpire;
-    onTimeoutRef.current = onTimeout;
-    onBeforeInteractiveRef.current = onBeforeInteractive;
-    onAfterInteractiveRef.current = onAfterInteractive;
-    onUnsupportedRef.current = onUnsupported;
-    onLoadRef.current = onLoad;
+  // NOTE: This custom hook manages all callbacks in one place, preventing the
+  // parent component from passing inline arrow functions causing widget re-creation.
+  const callbackRefs = useCallbackRefs({
+    onSuccess,
+    onError,
+    onExpire,
+    onTimeout,
+    onBeforeInteractive,
+    onAfterInteractive,
+    onUnsupported,
+    onLoad,
   });
 
   // ===========================================================================
@@ -472,7 +466,7 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
     // Check 2: If we have a widget ID but hasRenderedRef is false, it means this is a
     // re-render due to configuration changes - we need to remove the old widget first
     if (widgetIdRef.current) {
-      console.log("[Turnstile] Configuration changed, re-rendering widget");
+      debugLog("[Turnstile] Configuration changed, re-rendering widget");
       // Check if turnstile is already available (script already loaded)
       const turnstile = (window as any).turnstile as TurnstileAPI | undefined;
       if (turnstile) {
@@ -508,7 +502,7 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
 
         if (!turnstile) {
           console.error("[Turnstile] Script loaded but turnstile object not found.");
-          onErrorRef.current?.("script_load_failed");
+          callbackRefs.onError.current?.("script_load_failed");
           hasRenderedRef.current = false;
           return;
         }
@@ -517,14 +511,14 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
         if (containerRef.current.querySelector('iframe')) {
           // Widget already exists, just mark as ready
           setIsReady(true);
-          onLoadRef.current?.();
+          callbackRefs.onLoad.current?.();
           return;
         }
 
         // If we already have a widget ID (set by a previous render), don't render again
         if (widgetIdRef.current) {
           setIsReady(true);
-          onLoadRef.current?.();
+          callbackRefs.onLoad.current?.();
           return;
         }
 
@@ -545,28 +539,28 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
 
           // Callbacks - use refs to get latest values
           callback: (token: string) => {
-            onSuccessRef.current?.(token);
+            callbackRefs.onSuccess.current?.(token);
           },
           "error-callback": (errorCode?: string) => {
-            onErrorRef.current?.(errorCode);
+            callbackRefs.onError.current?.(errorCode);
             // Return true to indicate error was handled
             // This prevents Cloudflare from logging additional errors
             return true;
           },
           "expired-callback": () => {
-            onExpireRef.current?.();
+            callbackRefs.onExpire.current?.();
           },
           "timeout-callback": () => {
-            onTimeoutRef.current?.();
+            callbackRefs.onTimeout.current?.();
           },
           "before-interactive-callback": () => {
-            onBeforeInteractiveRef.current?.();
+            callbackRefs.onBeforeInteractive.current?.();
           },
           "after-interactive-callback": () => {
-            onAfterInteractiveRef.current?.();
+            callbackRefs.onAfterInteractive.current?.();
           },
           "unsupported-callback": () => {
-            onUnsupportedRef.current?.();
+            callbackRefs.onUnsupported.current?.();
           },
         };
 
@@ -594,23 +588,23 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
 
             if (isMountedRef.current) {
               setIsReady(true);
-              onLoadRef.current?.();
+              callbackRefs.onLoad.current?.();
             }
           } else {
             console.error("[Turnstile] Render returned invalid widget ID.");
-            onErrorRef.current?.("render_failed");
+            callbackRefs.onError.current?.("render_failed");
             hasRenderedRef.current = false;
           }
         } catch (e) {
           console.error("[Turnstile] Render failed:", e);
-          onErrorRef.current?.("render_exception");
+          callbackRefs.onError.current?.("render_exception");
           hasRenderedRef.current = false;
         }
       })
       .catch((error) => {
         console.error("[Turnstile] Script load failed:", error);
         if (isMountedRef.current) {
-          onErrorRef.current?.("script_load_failed");
+          callbackRefs.onError.current?.("script_load_failed");
         }
         hasRenderedRef.current = false;
       });
@@ -643,9 +637,12 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
         hasRenderedRef.current = false;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    // Only include props that should cause a full re-render of the widget
-    // NOTE: Callbacks are NOT included - they're accessed via refs
+    // Only include props that should cause a full re-render of the widget.
+    // Callbacks are intentionally excluded and accessed via refs instead.
+    // This prevents widget destruction/recreation when callback functions change
+    // (e.g., when parent passes inline arrow functions on every render).
     siteKey,
     theme,
     size,
@@ -682,15 +679,9 @@ const Turnstile = forwardRef<TurnstileRef, TurnstileProps>(function Turnstile(
 // =============================================================================
 
 /**
- * Minimal typing for Cloudflare's Turnstile API.
- * @internal
+ * DOM element to mount the widget.
+ * Usually a div with id or a querySelector result.
  */
-interface TurnstileAPI {
-  render(container: HTMLElement, options: Record<string, unknown>): string | number | undefined;
-  reset(widgetId?: string | number): void;
-  remove(widgetId?: string | number): void;
-  getResponse(widgetId?: string | number): string | undefined;
-  execute(widgetId?: string | number): void;
-}
+type TurnstileContainer = HTMLElement | null;
 
 export default Turnstile;
