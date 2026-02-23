@@ -1,6 +1,6 @@
 # Next.js Turnstile
 
-[![npm version](https://img.shields.io/npm/v/nextjs-turnstile/v/1.0.0)](https://www.npmjs.com/package/nextjs-turnstile)
+[![npm version](https://img.shields.io/npm/v/nextjs-turnstile)](https://www.npmjs.com/package/nextjs-turnstile)
 [![License](https://img.shields.io/npm/l/nextjs-turnstile)](./LICENSE)
 [![npm downloads](https://img.shields.io/npm/dw/nextjs-turnstile)](https://www.npmjs.com/package/nextjs-turnstile)
 
@@ -204,30 +204,64 @@ function MyForm() {
 
 ### `verifyTurnstile(token, options?)`
 
-Verifies a Turnstile token with Cloudflare's API.
+Verifies a Turnstile token with Cloudflare's [siteverify API](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/).
+Returns `true` on success. Throws `TurnstileError` on failure with an `errorCodes` array describing what went wrong.
 
 ```ts
 import { verifyTurnstile } from "nextjs-turnstile";
 
 // Basic usage (uses TURNSTILE_SECRET_KEY env var)
-const isValid = await verifyTurnstile(token);
+const ok = await verifyTurnstile(token);
+```
 
-// With options
-const isValid = await verifyTurnstile(token, {
+#### Error handling
+
+```ts
+import { verifyTurnstile, TurnstileError } from "nextjs-turnstile";
+
+try {
+  await verifyTurnstile(token);
+} catch (e) {
+  if (e instanceof TurnstileError) {
+    console.error(e.errorCodes); // e.g. ["invalid-input-response"]
+  }
+}
+```
+
+#### Advanced options
+
+```ts
+const ok = await verifyTurnstile(token, {
   secretKey: "custom-secret-key",  // Override secret key
-  ip: "1.2.3.4",                   // User's IP (auto-detected if not provided)
+  ip: "1.2.3.4",                   // User's IP (auto-detected if omitted)
   headers: request.headers,        // For IP detection in Pages Router
+  action: "login",                 // Reject if action doesn't match
+  hostname: "example.com",         // Reject if hostname doesn't match
+  timeout: 5000,                   // Fetch timeout in ms (default: 10 000)
 });
 ```
 
 **Parameters:**
 - `token` (string): The token from the Turnstile widget
 - `options` (object, optional):
-  - `secretKey`: Override the default secret key
-  - `ip`: User's IP address (auto-detected from headers)
-  - `headers`: Request headers for IP detection
+  - `secretKey`: Override the default secret key (falls back to `TURNSTILE_SECRET_KEY` env var)
+  - `ip`: User's IP address (auto-detected from headers if omitted)
+  - `headers`: Request headers for IP detection (Pages Router)
+  - `action`: Reject tokens whose `action` field doesn't match
+  - `hostname`: Reject tokens whose `hostname` field doesn't match
+  - `timeout`: Fetch timeout in milliseconds (default: `10000`)
 
-**Returns:** `Promise<boolean>` - `true` if valid, `false` otherwise
+**Returns:** `Promise<boolean>` — `true` when the token is valid
+
+**Throws:** `TurnstileError` — when verification fails (inspect `.errorCodes`)
+
+**Error codes** — in addition to [Cloudflare's error codes](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#error-codes-reference), the following are added by this library:
+
+| Code | Meaning |
+|------|---------|
+| `timeout-error` | The siteverify request timed out |
+| `action-mismatch` | Response `action` didn't match the expected value |
+| `hostname-mismatch` | Response `hostname` didn't match the expected value |
 
 ## Utility Functions
 

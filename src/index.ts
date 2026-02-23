@@ -31,9 +31,9 @@
  *
  * export async function POST(request: Request) {
  *   const { token } = await request.json();
- *   const isValid = await verifyTurnstile(token);
+ *   const ok = await verifyTurnstile(token);
  *
- *   if (!isValid) {
+ *   if (!ok) {
  *     return Response.json({ error: 'CAPTCHA failed' }, { status: 400 });
  *   }
  *
@@ -67,7 +67,11 @@ export type {
 // Server-side Verification
 // =============================================================================
 
-export { verifyTurnstile, getClientIp } from "./utils/verifyTurnstile";
+export {
+  verifyTurnstile,
+  getClientIp,
+  TurnstileError,
+} from "./utils/verifyTurnstile";
 export type { VerifyOptions } from "./utils/verifyTurnstile";
 
 // =============================================================================
