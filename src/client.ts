@@ -1,5 +1,3 @@
-"use client";
-
 // =============================================================================
 // Component
 // =============================================================================
@@ -11,32 +9,30 @@ export { default as Turnstile } from "./components/Turnstile";
 // =============================================================================
 
 export type {
-  TurnstileProps,
-  TurnstileRef,
-  TurnstileSize,
-  TurnstileTheme,
-  TurnstileAppearance,
-  TurnstileExecution,
-  TurnstileRefreshBehavior,
-  TurnstileRetry,
+	TurnstileAppearance,
+	TurnstileExecution,
+	TurnstileProps,
+	TurnstileRef,
+	TurnstileRefreshBehavior,
+	TurnstileRetry,
+	TurnstileSize,
+	TurnstileTheme,
 } from "./components/Turnstile";
 
 // =============================================================================
 // Client-side Utilities
 // =============================================================================
 
-export {
-  // Script loading
-  loadTurnstileScript,
-  isTurnstileLoaded,
-
-  // Widget control
-  resetTurnstile,
-  removeTurnstile,
-  getTurnstileResponse,
-  executeTurnstile,
-  isTokenExpired,
-  renderTurnstile,
-} from "./utils";
-
 export type { WidgetRef } from "./types";
+export {
+	executeTurnstile,
+	getTurnstileResponse,
+	isTokenExpired,
+	isTurnstileLoaded,
+	// Script loading
+	loadTurnstileScript,
+	removeTurnstile,
+	renderTurnstile,
+	// Widget control
+	resetTurnstile,
+} from "./utils";

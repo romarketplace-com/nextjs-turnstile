@@ -18,9 +18,9 @@
  * ```
  */
 export function debugLog(message: string, ...args: unknown[]): void {
-  if (process.env.NODE_ENV === "development") {
-    console.log(message, ...args);
-  }
+	if (process.env.NODE_ENV === "development") {
+		console.log(message, ...args);
+	}
 }
 
 /**
@@ -31,7 +31,7 @@ export function debugLog(message: string, ...args: unknown[]): void {
  * @param args - Additional arguments to pass to console.warn
  */
 export function debugWarn(message: string, ...args: unknown[]): void {
-  if (process.env.NODE_ENV === "development") {
-    console.warn(message, ...args);
-  }
+	if (process.env.NODE_ENV === "development") {
+		console.warn(message, ...args);
+	}
 }

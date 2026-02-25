@@ -6,6 +6,7 @@
  *
  * @module
  */
+// biome-ignore-all lint/suspicious/noExplicitAny: we need to assign properties to window and use dynamic keys in these utilities
 
 import type { TurnstileAPI, WidgetRef } from "../types";
 import { debugWarn } from "./debug";
@@ -18,7 +19,8 @@ export type { WidgetRef };
 // =============================================================================
 
 /** Base URL for the Turnstile script */
-const TURNSTILE_SCRIPT_URL = "https://challenges.cloudflare.com/turnstile/v0/api.js";
+const TURNSTILE_SCRIPT_URL =
+	"https://challenges.cloudflare.com/turnstile/v0/api.js";
 
 /** Maximum time to wait for script to load (ms) */
 const SCRIPT_LOAD_TIMEOUT = 10000;
@@ -28,9 +30,9 @@ const SCRIPT_POLL_INTERVAL = 100;
 
 // Extend window type to include turnstile
 declare global {
-  interface Window {
-    turnstile?: TurnstileAPI;
-  }
+	interface Window {
+		turnstile?: TurnstileAPI;
+	}
 }
 
 // =============================================================================
@@ -61,97 +63,119 @@ const SCRIPT_PROMISE_KEY = "__turnstile_load_promise__";
  * ```
  */
 export function loadTurnstileScript(): Promise<void> {
-  // SSR guard: resolve immediately on server
-  if (typeof window === "undefined") {
-    return Promise.resolve();
-  }
+	// SSR guard: resolve immediately on server
+	if (typeof window === "undefined") {
+		return Promise.resolve();
+	}
 
-  // Return cached promise if script is already loading/loaded
-  const cached = (window as any)[SCRIPT_PROMISE_KEY] as Promise<void> | undefined;
-  if (cached) {
-    return cached;
-  }
+	// Return cached promise if script is already loading/loaded
+	const cached = (window as any)[SCRIPT_PROMISE_KEY] as
+		| Promise<void>
+		| undefined;
+	if (cached) {
+		return cached;
+	}
 
-  // Create and cache the loading promise
-  const promise = new Promise<void>((resolve, reject) => {
-    // Case 1: Turnstile is already available (script was loaded elsewhere)
-    if (window.turnstile) {
-      resolve();
-      return;
-    }
+	// Create and cache the loading promise
+	const promise = new Promise<void>((resolve, reject) => {
+		// Case 1: Turnstile is already available (script was loaded elsewhere)
+		if (window.turnstile) {
+			resolve();
+			return;
+		}
 
-    // Case 2: Script tag exists but turnstile not ready yet
-    // This can happen if another part of the app loaded it
-    const existingScript = document.querySelector(
-      `script[src^="${TURNSTILE_SCRIPT_URL}"]`
-    );
+		// Case 2: Script tag exists but turnstile not ready yet
+		// This can happen if another part of the app loaded it
+		const existingScript = document.querySelector(
+			`script[src^="${TURNSTILE_SCRIPT_URL}"]`,
+		);
 
-    if (existingScript) {
-      // Poll for window.turnstile with timeout
-      let elapsed = 0;
-      const interval = setInterval(() => {
-        elapsed += SCRIPT_POLL_INTERVAL;
+		if (existingScript) {
+			// Poll for window.turnstile with timeout
+			let elapsed = 0;
+			const interval = setInterval(() => {
+				elapsed += SCRIPT_POLL_INTERVAL;
 
-        if (window.turnstile) {
-          clearInterval(interval);
-          resolve();
-        } else if (elapsed >= SCRIPT_LOAD_TIMEOUT) {
-          clearInterval(interval);
-          reject(new Error("[Turnstile] Script load timeout - turnstile object not found."));
-        }
-      }, SCRIPT_POLL_INTERVAL);
+				if (window.turnstile) {
+					clearInterval(interval);
+					resolve();
+				} else if (elapsed >= SCRIPT_LOAD_TIMEOUT) {
+					clearInterval(interval);
+					reject(
+						new Error(
+							"[Turnstile] Script load timeout - turnstile object not found.",
+						),
+					);
+				}
+			}, SCRIPT_POLL_INTERVAL);
 
-      return;
-    }
+			return;
+		}
 
-    // Case 3: Need to load the script ourselves
-    const script = document.createElement("script");
-    script.async = true;
-    script.defer = true;
+		// Case 3: Need to load the script ourselves
+		const script = document.createElement("script");
+		script.async = true;
+		script.defer = true;
 
-    // Generate unique callback name to avoid conflicts
-    const callbackName = `__cfTurnstileOnLoad_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+		// Generate unique callback name to avoid conflicts
+		const callbackName = `__cfTurnstileOnLoad_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
-    // Use explicit rendering mode with onload callback
-    // This gives us precise control over when widgets are rendered
-    script.src = `${TURNSTILE_SCRIPT_URL}?render=explicit&onload=${callbackName}`;
+		// Use explicit rendering mode with onload callback
+		// This gives us precise control over when widgets are rendered
+		script.src = `${TURNSTILE_SCRIPT_URL}?render=explicit&onload=${callbackName}`;
 
-    // Set up timeout
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      reject(new Error("[Turnstile] Script load timeout."));
-    }, SCRIPT_LOAD_TIMEOUT);
+		// Set up timeout
+		const timeoutId = setTimeout(() => {
+			cleanup();
+			reject(new Error("[Turnstile] Script load timeout."));
+		}, SCRIPT_LOAD_TIMEOUT);
 
-    // Cleanup helper
-    const cleanup = () => {
-      clearTimeout(timeoutId);
-      delete (window as any)[callbackName];
-    };
+		// Cleanup helper
+		const cleanup = () => {
+			clearTimeout(timeoutId);
+			delete (window as any)[callbackName];
+		};
 
-    // Success callback (called by Cloudflare when script is ready)
-    (window as any)[callbackName] = () => {
-      cleanup();
-      if (window.turnstile) {
-        resolve();
-      } else {
-        reject(new Error("[Turnstile] Script loaded but turnstile object not found."));
-      }
-    };
+		// Success callback (called by Cloudflare when script is ready)
+		(window as any)[callbackName] = () => {
+			cleanup();
+			if (window.turnstile) {
+				resolve();
+			} else {
+				reject(
+					new Error(
+						"[Turnstile] Script loaded but turnstile object not found.",
+					),
+				);
+			}
+		};
 
-    // Error handler
-    script.onerror = () => {
-      cleanup();
-      reject(new Error("[Turnstile] Script failed to load."));
-    };
+		// Error handler
+		script.onerror = () => {
+			cleanup();
+			reject(new Error("[Turnstile] Script failed to load."));
+		};
 
-    // Append script to document
-    document.head.appendChild(script);
-  });
+		// Add DNS preconnect for faster script loading (if not already present)
+		if (
+			!document.querySelector(
+				'link[rel="preconnect"][href="https://challenges.cloudflare.com"]',
+			)
+		) {
+			const preconnect = document.createElement("link");
+			preconnect.rel = "preconnect";
+			preconnect.href = "https://challenges.cloudflare.com";
+			document.head.appendChild(preconnect);
+		}
 
-  // Cache the promise
-  (window as any)[SCRIPT_PROMISE_KEY] = promise;
+		// Append script to document
+		document.head.appendChild(script);
+	});
 
-  return promise;
+	// Cache the promise
+	(window as any)[SCRIPT_PROMISE_KEY] = promise;
+
+	return promise;
 }
 
 /**
@@ -167,7 +191,9 @@ export function loadTurnstileScript(): Promise<void> {
  * ```
  */
 export function isTurnstileLoaded(): boolean {
-  return typeof window !== "undefined" && typeof window.turnstile !== "undefined";
+	return (
+		typeof window !== "undefined" && typeof window.turnstile !== "undefined"
+	);
 }
 
 // =============================================================================
@@ -179,8 +205,8 @@ export function isTurnstileLoaded(): boolean {
  * @internal
  */
 function getTurnstile(): TurnstileAPI | undefined {
-  if (typeof window === "undefined") return undefined;
-  return window.turnstile;
+	if (typeof window === "undefined") return undefined;
+	return window.turnstile;
 }
 
 /**
@@ -205,14 +231,14 @@ function getTurnstile(): TurnstileAPI | undefined {
  * ```
  */
 export function resetTurnstile(widgetRef?: WidgetRef): void {
-  const turnstile = getTurnstile();
-  if (!turnstile) return;
+	const turnstile = getTurnstile();
+	if (!turnstile) return;
 
-  try {
-    turnstile.reset(widgetRef);
-  } catch (error) {
-    debugWarn("[Turnstile] Reset failed:", error);
-  }
+	try {
+		turnstile.reset(widgetRef);
+	} catch (error) {
+		debugWarn("[Turnstile] Reset failed:", error);
+	}
 }
 
 /**
@@ -229,14 +255,14 @@ export function resetTurnstile(widgetRef?: WidgetRef): void {
  * ```
  */
 export function removeTurnstile(widgetRef: WidgetRef): void {
-  const turnstile = getTurnstile();
-  if (!turnstile) return;
+	const turnstile = getTurnstile();
+	if (!turnstile) return;
 
-  try {
-    turnstile.remove(widgetRef);
-  } catch (error) {
-    debugWarn("[Turnstile] Remove failed:", error);
-  }
+	try {
+		turnstile.remove(widgetRef);
+	} catch (error) {
+		debugWarn("[Turnstile] Remove failed:", error);
+	}
 }
 
 /**
@@ -258,16 +284,16 @@ export function removeTurnstile(widgetRef: WidgetRef): void {
  * ```
  */
 export function getTurnstileResponse(widgetRef: WidgetRef): string | null {
-  const turnstile = getTurnstile();
-  if (!turnstile) return null;
+	const turnstile = getTurnstile();
+	if (!turnstile) return null;
 
-  try {
-    const response = turnstile.getResponse(widgetRef);
-    return response || null;
-  } catch (error) {
-    debugWarn("[Turnstile] getResponse failed:", error);
-    return null;
-  }
+	try {
+		const response = turnstile.getResponse(widgetRef);
+		return response || null;
+	} catch (error) {
+		debugWarn("[Turnstile] getResponse failed:", error);
+		return null;
+	}
 }
 
 /**
@@ -291,14 +317,14 @@ export function getTurnstileResponse(widgetRef: WidgetRef): string | null {
  * ```
  */
 export function executeTurnstile(widgetRef: WidgetRef): void {
-  const turnstile = getTurnstile();
-  if (!turnstile) return;
+	const turnstile = getTurnstile();
+	if (!turnstile) return;
 
-  try {
-    turnstile.execute(widgetRef);
-  } catch (error) {
-    debugWarn("[Turnstile] Execute failed:", error);
-  }
+	try {
+		turnstile.execute(widgetRef);
+	} catch (error) {
+		debugWarn("[Turnstile] Execute failed:", error);
+	}
 }
 
 /**
@@ -319,14 +345,14 @@ export function executeTurnstile(widgetRef: WidgetRef): void {
  * ```
  */
 export function isTokenExpired(widgetRef: WidgetRef): boolean {
-  const turnstile = getTurnstile();
-  if (!turnstile) return false;
+	const turnstile = getTurnstile();
+	if (!turnstile) return false;
 
-  try {
-    return turnstile.isExpired(widgetRef);
-  } catch {
-    return false;
-  }
+	try {
+		return turnstile.isExpired(widgetRef);
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -348,21 +374,23 @@ export function isTokenExpired(widgetRef: WidgetRef): boolean {
  * ```
  */
 export async function renderTurnstile(
-  container: WidgetRef,
-  options: Record<string, unknown>
+	container: WidgetRef,
+	options: Record<string, unknown>,
 ): Promise<string | undefined> {
-  await loadTurnstileScript();
+	await loadTurnstileScript();
 
-  const turnstile = getTurnstile();
-  if (!turnstile) {
-    throw new Error("[Turnstile] Script loaded but turnstile object not found.");
-  }
+	const turnstile = getTurnstile();
+	if (!turnstile) {
+		throw new Error(
+			"[Turnstile] Script loaded but turnstile object not found.",
+		);
+	}
 
-  try {
-    const widgetId = turnstile.render(container, options);
-    return widgetId !== undefined ? String(widgetId) : undefined;
-  } catch (error) {
-    console.error("[Turnstile] Render failed:", error);
-    return undefined;
-  }
+	try {
+		const widgetId = turnstile.render(container, options);
+		return widgetId !== undefined ? String(widgetId) : undefined;
+	} catch (error) {
+		console.error("[Turnstile] Render failed:", error);
+		return undefined;
+	}
 }

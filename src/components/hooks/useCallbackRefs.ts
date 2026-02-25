@@ -36,25 +36,29 @@ import { useLayoutEffect, useRef } from "react";
  * ```
  */
 export function useCallbackRefs<T extends Record<string, unknown>>(
-  callbacks: T
-): { [K in keyof T]: React.MutableRefObject<T[K] | undefined> } {
-  // Create refs for each callback, initialized from the callbacks object
-  const refsObject = useRef<{ [K in keyof T]: React.MutableRefObject<T[K] | undefined> }>(
-    Object.keys(callbacks).reduce(
-      (acc, key) => {
-        acc[key as keyof T] = useRef<T[keyof T] | undefined>(callbacks[key as keyof T] as any);
-        return acc;
-      },
-      {} as { [K in keyof T]: React.MutableRefObject<T[K] | undefined> }
-    )
-  ).current;
+	callbacks: T,
+): { [K in keyof T]: React.RefObject<T[K] | undefined> } {
+	// Create refs for each callback, initialized from the callbacks object
+	const refsObject = useRef<{
+		[K in keyof T]: React.RefObject<T[K] | undefined>;
+	}>(
+		Object.keys(callbacks).reduce(
+			(acc, key) => {
+				// Create plain objects with a 'current' property instead of calling useRef multiple times
+				// This avoids violating React's Rules of Hooks
+				acc[key as keyof T] = { current: callbacks[key as keyof T] };
+				return acc;
+			},
+			{} as { [K in keyof T]: React.RefObject<T[K] | undefined> },
+		),
+	).current;
 
-  // Update all refs when callbacks change
-  useLayoutEffect(() => {
-    Object.keys(callbacks).forEach((key) => {
-      refsObject[key as keyof T].current = callbacks[key as keyof T] as any;
-    });
-  });
+	// Update all refs when callbacks change
+	useLayoutEffect(() => {
+		Object.keys(callbacks).forEach((key) => {
+			refsObject[key as keyof T].current = callbacks[key as keyof T];
+		});
+	});
 
-  return refsObject;
+	return refsObject;
 }

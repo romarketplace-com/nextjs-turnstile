@@ -1,20 +1,20 @@
 import "server-only";
+
 // =============================================================================
 // Server-side Verification
 // =============================================================================
 
-export {
-  verifyTurnstile,
-  getClientIp,
-  getTurnstileErrorDescription,
-  isSuccessfulVerifyResponse,
-} from "./utils/verifyTurnstile";
-
 export type {
-  // Verification response types
-  SuccessfulVerifyResponse,
-  FailedVerifyResponse,
-  // Verification options and error codes
-  VerifyOptions,
-  TurnstileErrorCode,
+	FailedVerifyResponse,
+	// Verification response types
+	SuccessfulVerifyResponse,
+	TurnstileErrorCode,
+	// Verification options and error codes
+	VerifyOptions,
+} from "./utils/verifyTurnstile";
+export {
+	getClientIp,
+	getTurnstileErrorDescription,
+	isSuccessfulVerifyResponse,
+	verifyTurnstile,
 } from "./utils/verifyTurnstile";

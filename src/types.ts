@@ -16,10 +16,13 @@ export type WidgetRef = string | number | HTMLElement;
  * @internal
  */
 export interface TurnstileAPI {
-  render(container: WidgetRef, options?: Record<string, unknown>): string | number;
-  reset(widgetId?: WidgetRef): void;
-  remove(widgetId?: WidgetRef): void;
-  getResponse(widgetId?: WidgetRef): string | undefined;
-  execute(widgetId?: WidgetRef): void;
-  isExpired(widgetId?: WidgetRef): boolean;
+	render(
+		container: WidgetRef,
+		options?: Record<string, unknown>,
+	): string | number;
+	reset(widgetId?: WidgetRef): void;
+	remove(widgetId?: WidgetRef): void;
+	getResponse(widgetId?: WidgetRef): string | undefined;
+	execute(widgetId?: WidgetRef): void;
+	isExpired(widgetId?: WidgetRef): boolean;
 }
